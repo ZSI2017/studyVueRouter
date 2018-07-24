@@ -61,6 +61,12 @@ export class History {
     this.errorCbs.push(errorCb)
   }
 
+  /*
+   *  location， getHash()获取的path 值传入进去。
+   *  onComplete:  完成后 回调，
+   *  onAbort: 中断；
+   *
+   */
   transitionTo (location: RawLocation, onComplete?: Function, onAbort?: Function) {
     const route = this.router.match(location, this.current)
     this.confirmTransition(route, () => {

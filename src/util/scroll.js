@@ -8,10 +8,17 @@ const positionStore = Object.create(null)
 
 export function setupScroll () {
   // Fix for #1585 for Firefox
+  /* replaceState（） 三个参数。
+   *   状态对象， 状态对象 state 是一个JavaScript 对象，在 popstate事件被触发时，可以通过 state 拿到
+   *   标题：     目前没忽略，document.title = xxx 代替
+   *    URL:      定义了新的 url,浏览器并不会检查的url对应的 xxx.html 是否存在，
+   **/
   window.history.replaceState({ key: getStateKey() }, '')
+  // 监听 popstate 事件变化，
   window.addEventListener('popstate', e => {
     saveScrollPosition()
     if (e.state && e.state.key) {
+      // 更新 key 值。
       setStateKey(e.state.key)
     }
   })
@@ -59,8 +66,13 @@ export function handleScroll (
   })
 }
 
+// 保存 popstate 事件触发时，
+/* 页面位置：
+      window.pageXOffset，
+      window.pageYOffset
+ */
 export function saveScrollPosition () {
-  const key = getStateKey()
+  const key = getStateKey() // 保存某一时刻的 position 定位。
   if (key) {
     positionStore[key] = {
       x: window.pageXOffset,

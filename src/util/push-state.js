@@ -21,15 +21,18 @@ export const supportsPushState = inBrowser && (function () {
 // use User Timing api (if present) for more accurate key precision
 // https://w3c.github.io/user-timing/
 // 利用window.performance 更准确的测量 应用的性能
+// 这里利用performance 获取 时间戳，设置key 值。
 const Time = inBrowser && window.performance && window.performance.now
   ? window.performance
   : Date
 
+// 刚进入时，获取到 时间戳，作为 statekey 值。
 let _key: string = genKey()
 
 function genKey (): string {
   return Time.now().toFixed(3)
 }
+
 
 export function getStateKey () {
   return _key
