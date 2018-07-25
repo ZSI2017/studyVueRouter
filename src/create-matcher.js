@@ -28,6 +28,10 @@ export function createMatcher (
     currentRoute?: Route,
     redirectedFrom?: Location
   ): Route {
+    // raw => getHash() 获取到location.href 中的 # 后面的值。
+    // currentRoute: Route; 对应当前 Route 实例。
+    // false。
+    // router vueRouter 实例 
     const location = normalizeLocation(raw, currentRoute, false, router)
     const { name } = location
 

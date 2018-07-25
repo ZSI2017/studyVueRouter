@@ -39,6 +39,7 @@ export default class VueRouter {
     this.beforeHooks = []
     this.resolveHooks = []
     this.afterHooks = []
+    // routes 数组，里面保存着 所有 router 中的配置 ，包括 path, name， component；
     this.matcher = createMatcher(options.routes || [], this)
 
     let mode = options.mode || 'hash'

@@ -68,6 +68,7 @@ export class History {
    *
    */
   transitionTo (location: RawLocation, onComplete?: Function, onAbort?: Function) {
+    // normalizeLocation
     const route = this.router.match(location, this.current)
     this.confirmTransition(route, () => {
       this.updateRoute(route)

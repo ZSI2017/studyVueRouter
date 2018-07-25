@@ -4,8 +4,10 @@ import Regexp from 'path-to-regexp'
 import { cleanPath } from './util/path'
 import { assert, warn } from './util/warn'
 
+// 解析传入的 routes 数组。分别放在
+// pathList , pathMap, nameMap 数组中。
 export function createRouteMap (
-  routes: Array<RouteConfig>,
+  routes: Array<RouteConfig>,  // routes 数组中，保存着path ,component,name;
   oldPathList?: Array<string>,
   oldPathMap?: Dictionary<RouteRecord>,
   oldNameMap?: Dictionary<RouteRecord>
@@ -26,6 +28,7 @@ export function createRouteMap (
   })
 
   // ensure wildcard routes are always at the end
+  // 保证 通配符 '*' path 总是出现在 pathList 最末尾。
   for (let i = 0, l = pathList.length; i < l; i++) {
     if (pathList[i] === '*') {
       pathList.push(pathList.splice(i, 1)[0])
@@ -51,7 +54,9 @@ function addRouteRecord (
 ) {
   const { path, name } = route
   if (process.env.NODE_ENV !== 'production') {
+    // path is required； 必须的
     assert(path != null, `"path" is required in a route configuration.`)
+    // component 应该是具体的vue 组件实例，不能为 string 类型
     assert(
       typeof route.component !== 'string',
       `route config "component" for path: ${String(path || name)} cannot be a ` +
@@ -67,21 +72,22 @@ function addRouteRecord (
   )
 
   if (typeof route.caseSensitive === 'boolean') {
+    // 大小写敏感
     pathToRegexpOptions.sensitive = route.caseSensitive
   }
 
   const record: RouteRecord = {
     path: normalizedPath,
     regex: compileRouteRegex(normalizedPath, pathToRegexpOptions),
-    components: route.components || { default: route.component },
+    components: route.components || { default: route.component }, // 命名路由组件
     instances: {},
     name,
     parent,
     matchAs,
-    redirect: route.redirect,
-    beforeEnter: route.beforeEnter,
-    meta: route.meta || {},
-    props: route.props == null
+    redirect: route.redirect,    //  路由重定向。
+    beforeEnter: route.beforeEnter,  // 路由守护
+    meta: route.meta || {},          // 路由元信息。
+    props: route.props == null       //
       ? {}
       : route.components
         ? route.props
@@ -92,6 +98,7 @@ function addRouteRecord (
     // Warn if route is named, does not redirect and has a default child route.
     // If users navigate to this route by name, the default child will
     // not be rendered (GH Issue #629)
+    //使用父类的命名路由，不会渲染默认子路由，必须使用path 路由。
     if (process.env.NODE_ENV !== 'production') {
       if (route.name && !route.redirect && route.children.some(child => /^\/?$/.test(child.path))) {
         warn(
@@ -108,6 +115,7 @@ function addRouteRecord (
       const childMatchAs = matchAs
         ? cleanPath(`${matchAs}/${child.path}`)
         : undefined
+      // 当前记录当前子路由。
       addRouteRecord(pathList, pathMap, nameMap, child, record, childMatchAs)
     })
   }
@@ -121,7 +129,7 @@ function addRouteRecord (
       const aliasRoute = {
         path: alias,
         children: route.children
-      }
+      } // alias 对应的别名，同样设置进去。
       addRouteRecord(
         pathList,
         pathMap,
@@ -134,14 +142,18 @@ function addRouteRecord (
   }
 
   if (!pathMap[record.path]) {
+    // 记录path 对应的 record;
     pathList.push(record.path)
     pathMap[record.path] = record
   }
 
   if (name) {
+    // 设置了命名路由。
     if (!nameMap[name]) {
+      // 保存在nameMap中,方便通过 name 搜索到对应的记录。
       nameMap[name] = record
     } else if (process.env.NODE_ENV !== 'production' && !matchAs) {
+      // 定义了相同的 name
       warn(
         false,
         `Duplicate named routes definition: ` +
@@ -167,5 +179,6 @@ function normalizePath (path: string, parent?: RouteRecord, strict?: boolean): s
   if (!strict) path = path.replace(/\/$/, '')
   if (path[0] === '/') return path
   if (parent == null) return path
+  // 父子组件嵌套时，拼接path路径。
   return cleanPath(`${parent.path}/${path}`)
 }

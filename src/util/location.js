@@ -13,6 +13,7 @@ export function normalizeLocation (
   append: ?boolean,
   router: ?VueRouter
 ): Location {
+  // 保存当前 path 值。封装到对象里面。
   let next: Location = typeof raw === 'string' ? { path: raw } : raw
   // named target
   if (next.name || next._normalized) {

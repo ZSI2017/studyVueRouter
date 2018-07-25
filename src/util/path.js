@@ -42,6 +42,12 @@ export function resolvePath (
   return stack.join('/')
 }
 
+/*  解析传入的path;
+    利用 slice 切分出 不同的部分
+    query -> ？ 后面的值 window.location.queryIndex,
+    hash -> #  后面的值 window.location.hash;
+    path -> 
+ */
 export function parsePath (path: string): {
   path: string;
   query: string;
@@ -69,6 +75,7 @@ export function parsePath (path: string): {
   }
 }
 
+// 清除两个斜杆中， 多余的 斜杆。
 export function cleanPath (path: string): string {
   return path.replace(/\/\//g, '/')
 }
