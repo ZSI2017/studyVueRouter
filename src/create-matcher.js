@@ -208,8 +208,9 @@ function matchRoute (
     const val = typeof m[i] === 'string' ? decodeURIComponent(m[i]) : m[i]
     if (key) {
       // Fix #1994: using * with props: true generates a param named 0
-      /* children: [ {path: '*', component: NotFound} ]
-       *
+      /* children: [
+       *   {path: '*', component: NotFound}
+       *    ]
        */
       params[key.name || 'pathMatch'] = val
     }
