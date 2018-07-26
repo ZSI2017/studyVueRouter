@@ -39,10 +39,13 @@ export function normalizeLocation (
 
   const parsedPath = parsePath(next.path || '')
   const basePath = (current && current.path) || '/'
+  // 如果 parsePath.path 为相对路径，
+  // 则通过拼接basePath。设置为绝对路径。
   const path = parsedPath.path
     ? resolvePath(parsedPath.path, basePath, append || next.append)
     : basePath
 
+  // 操作query 参数。
   const query = resolveQuery(
     parsedPath.query,
     next.query,

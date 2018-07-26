@@ -6,6 +6,7 @@ export function resolvePath (
   append?: boolean
 ): string {
   const firstChar = relative.charAt(0)
+  // 拼接成相对路径。
   if (firstChar === '/') {
     return relative
   }
@@ -46,7 +47,7 @@ export function resolvePath (
     利用 slice 切分出 不同的部分
     query -> ？ 后面的值 window.location.queryIndex,
     hash -> #  后面的值 window.location.hash;
-    path -> 
+    path -> url 中不包含任何参数的 window.location.origin
  */
 export function parsePath (path: string): {
   path: string;

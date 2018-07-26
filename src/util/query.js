@@ -18,6 +18,8 @@ const decode = decodeURIComponent
 export function resolveQuery (
   query: ?string,
   extraQuery: Dictionary<string> = {},
+  // 提供 parseQuery / stringifyQuery 提供自定义查询字符串的 解析/反解析 函数，
+  // 覆盖默认行为。
   _parseQuery: ?Function
 ): Dictionary<string> {
   const parse = _parseQuery || parseQuery

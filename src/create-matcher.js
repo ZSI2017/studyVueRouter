@@ -31,8 +31,18 @@ export function createMatcher (
     // raw => getHash() 获取到location.href 中的 # 后面的值。
     // currentRoute: Route; 对应当前 Route 实例。
     // false。
-    // router vueRouter 实例 
+    // router vueRouter 实例
     const location = normalizeLocation(raw, currentRoute, false, router)
+    /*
+     *通过 normalizeLocation
+     * {
+         _normalized: true,
+         path,
+         query,
+         hash
+        }
+        返回处理过的 path, query，hash .
+     */
     const { name } = location
 
     if (name) {
@@ -62,11 +72,14 @@ export function createMatcher (
         return _createRoute(record, location, redirectedFrom)
       }
     } else if (location.path) {
+      // 如果 未使用命名路由，
+      //
       location.params = {}
       for (let i = 0; i < pathList.length; i++) {
         const path = pathList[i]
-        const record = pathMap[path]
+        const record = pathMap[path] // 提取出path 对应的record
         if (matchRoute(record.regex, location.path, location.params)) {
+          // 如果匹配成功，
           return _createRoute(record, location, redirectedFrom)
         }
       }

@@ -65,6 +65,9 @@ function addRouteRecord (
   }
 
   const pathToRegexpOptions: PathToRegexpOptions = route.pathToRegexpOptions || {}
+  /*
+   *  提供path-to-regexp 的 options 对象。
+   */
   const normalizedPath = normalizePath(
     path,
     parent,
@@ -160,7 +163,11 @@ function addRouteRecord (
         `{ name: "${name}", path: "${record.path}" }`
       )
     }
-  }
+
+
+
+
+
 }
 
 function compileRouteRegex (path: string, pathToRegexpOptions: PathToRegexpOptions): RouteRegExp {
