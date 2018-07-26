@@ -79,7 +79,7 @@ export function createMatcher (
         const path = pathList[i]
         const record = pathMap[path] // 提取出path 对应的record
         if (matchRoute(record.regex, location.path, location.params)) {
-          // 如果匹配成功，
+          // 如果匹配成功，直接返回
           return _createRoute(record, location, redirectedFrom)
         }
       }
@@ -194,6 +194,7 @@ function matchRoute (
   path: string,
   params: Object
 ): boolean {
+  // 通过正则 匹配path,
   const m = path.match(regex)
 
   if (!m) {
@@ -207,6 +208,9 @@ function matchRoute (
     const val = typeof m[i] === 'string' ? decodeURIComponent(m[i]) : m[i]
     if (key) {
       // Fix #1994: using * with props: true generates a param named 0
+      /* children: [ {path: '*', component: NotFound} ]
+       *
+       */
       params[key.name || 'pathMatch'] = val
     }
   }

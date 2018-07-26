@@ -67,6 +67,13 @@ function addRouteRecord (
   const pathToRegexpOptions: PathToRegexpOptions = route.pathToRegexpOptions || {}
   /*
    *  提供path-to-regexp 的 options 对象。
+   *  path:
+   *  keys:
+   *  options:
+   *      sensitive: false;
+   *      strict: false;
+   *      end: true
+   *
    */
   const normalizedPath = normalizePath(
     path,
@@ -171,10 +178,14 @@ function addRouteRecord (
 }
 
 function compileRouteRegex (path: string, pathToRegexpOptions: PathToRegexpOptions): RouteRegExp {
+  // 利用 path-to-regex 转换为regex正则
   const regex = Regexp(path, [], pathToRegexpOptions)
+  //  var re = pathToRegexp('/:foo/:bar')
+  // keys = [{ name: 'foo', prefix: '/', ... }, { name: 'bar', prefix: '/', ... }]
   if (process.env.NODE_ENV !== 'production') {
     const keys: any = Object.create(null)
     regex.keys.forEach(key => {
+      // 对于重复的 path name 发出警告。
       warn(!keys[key.name], `Duplicate param keys in route with path: "${path}"`)
       keys[key.name] = true
     })
