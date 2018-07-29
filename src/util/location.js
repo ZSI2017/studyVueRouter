@@ -38,7 +38,7 @@ export function normalizeLocation (
 
   const parsedPath = parsePath(next.path || '')
   const basePath = (current && current.path) || '/'
-  const path = parsedPath.path
+  const path = parsedPath.path  //
     ? resolvePath(parsedPath.path, basePath, append || next.append)
     : basePath
 

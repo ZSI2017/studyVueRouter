@@ -62,7 +62,7 @@ export class History {
   }
 
   transitionTo (location: RawLocation, onComplete?: Function, onAbort?: Function) {
-    const route = this.router.match(location, this.current)
+    const route = this.router.match(location, this.current) // 返回 经过 Object.freeze 不可修改的 Route 对象
     this.confirmTransition(route, () => {
       this.updateRoute(route)
       onComplete && onComplete(route)
@@ -87,7 +87,7 @@ export class History {
   confirmTransition (route: Route, onComplete: Function, onAbort?: Function) {
     const current = this.current
     const abort = err => {
-      if (isError(err)) {
+      if (isError(err)) { // 是否为 Error 构造函数
         if (this.errorCbs.length) {
           this.errorCbs.forEach(cb => { cb(err) })
         } else {
@@ -95,6 +95,7 @@ export class History {
           console.error(err)
         }
       }
+      // 触发了错误的回调后， 
       onAbort && onAbort(err)
     }
     if (
