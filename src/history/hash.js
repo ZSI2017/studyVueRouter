@@ -21,16 +21,22 @@ export class HashHistory extends History {
   // to avoid the hashchange listener being fired too early
   setupListeners () {
     const router = this.router
+    // scrollBehavior 当切换新路由时， 调整页面是否滚动到顶部，或者保持原先的滚动位置，
+    // 这个功能只会在支持 history.pushState 的浏览器中使用 supportsPushState;
     const expectScroll = router.options.scrollBehavior
     const supportsScroll = supportsPushState && expectScroll
 
     if (supportsScroll) {
+      // 支持 scroll 滚动行为
+      // 利用 pageXOffset ， pageYOffset 记录当前页面的滚动位置。
       setupScroll()
     }
 
     window.addEventListener(supportsPushState ? 'popstate' : 'hashchange', () => {
       const current = this.current
       if (!ensureSlash()) {
+        // 如果不是 #/ 开头的 hash 模式，
+        // 则直接返回
         return
       }
       this.transitionTo(getHash(), route => {
@@ -95,6 +101,8 @@ function ensureSlash (): boolean {
   if (path.charAt(0) === '/') {
     return true
   }
+  // 如果hash 后面没有 '/' 手动修改url,
+  // 修改为 {base}#{path} 的hash 模式。
   replaceHash('/' + path)
   return false
 }

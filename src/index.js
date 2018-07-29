@@ -158,7 +158,15 @@ export default class VueRouter {
     this.go(1)
   }
 
-  getMatchedComponents (to?: RawLocation | Route): Array<any> {
+  getMatchedCompone
+
+
+
+
+
+
+
+  nts (to?: RawLocation | Route): Array<any> {
     const route: any = to
       ? to.matched
         ? to
