@@ -212,6 +212,7 @@ function matchRoute (
        *   {path: '*', component: NotFound}
        *    ]
        */
+      // 保存 通过正则 匹配到url中对应的 参数
       params[key.name || 'pathMatch'] = val
     }
   }
