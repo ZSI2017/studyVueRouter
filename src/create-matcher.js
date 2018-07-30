@@ -77,7 +77,9 @@ export function createMatcher (
       location.params = {}
       for (let i = 0; i < pathList.length; i++) {
         const path = pathList[i]
-        const record = pathMap[path] // 提取出path 对应的record
+        const record = pathMap[path]
+        // path.match 测试是否匹配到了url，
+        // 匹配成功 -》
         if (matchRoute(record.regex, location.path, location.params)) {
           // 如果匹配成功，直接返回
           return _createRoute(record, location, redirectedFrom)
@@ -88,11 +90,15 @@ export function createMatcher (
     return _createRoute(null, location)
   }
 
+  // 在路由匹配后， 处理重定向，
   function redirect (
     record: RouteRecord,
     location: Location
   ): Route {
     const originalRedirect = record.redirect
+    /**
+     *  redirect: to =>  { 目标路由作为参数，  return 字符串路径/ 路径对象  }
+     */
     let redirect = typeof originalRedirect === 'function'
       ? originalRedirect(createRoute(record, location, null, router))
       : originalRedirect
@@ -102,6 +108,7 @@ export function createMatcher (
     }
 
     if (!redirect || typeof redirect !== 'object') {
+    // 检查 redirect 的 合法性，
       if (process.env.NODE_ENV !== 'production') {
         warn(
           false, `invalid redirect option: ${JSON.stringify(redirect)}`
@@ -111,18 +118,20 @@ export function createMatcher (
     }
 
     const re: Object = redirect
-    const { name, path } = re
+    const { name, path } = re    // 重定向的目标，可以是 具体 path ，也可以是命名的路由，
     let { query, hash, params } = location
+
     query = re.hasOwnProperty('query') ? re.query : query
     hash = re.hasOwnProperty('hash') ? re.hash : hash
     params = re.hasOwnProperty('params') ? re.params : params
 
     if (name) {
       // resolved named direct
-      const targetRecord = nameMap[name]
+      const targetRecord = nameMap[name]   // 从保存的nameMap[name] 中，获取指定的命名路由。
       if (process.env.NODE_ENV !== 'production') {
         assert(targetRecord, `redirect failed: named route "${name}" not found.`)
       }
+      // 走统一的路由匹配的match 方法。
       return match({
         _normalized: true,
         name,
@@ -131,11 +140,12 @@ export function createMatcher (
         params
       }, undefined, location)
     } else if (path) {
-      // 1. resolve relative redirect
+      // 1. resolve relative redirect 处理相对路由
       const rawPath = resolveRecordPath(path, record)
-      // 2. resolve params
+      // 2. resolve params  返回填充了 params 的 url
       const resolvedPath = fillParams(rawPath, params, `redirect route with path "${rawPath}"`)
       // 3. rematch with existing query and hash
+      // 重新匹配 现有的 hash，
       return match({
         _normalized: true,
         path: resolvedPath,
@@ -143,19 +153,24 @@ export function createMatcher (
         hash
       }, undefined, location)
     } else {
+      // 不合法的 redirect 选项
       if (process.env.NODE_ENV !== 'production') {
         warn(false, `invalid redirect option: ${JSON.stringify(redirect)}`)
       }
+      // 同样返回一个 路由对象
       return _createRoute(null, location)
     }
   }
 
+// 路由匹配后，通过别名 映射到其它的路由规则上。
+// 传入参数 alias(record, location, record.matchAs)
   function alias (
     record: RouteRecord,
     location: Location,
     matchAs: string
   ): Route {
     const aliasedPath = fillParams(matchAs, location.params, `aliased route with path "${matchAs}"`)
+    // 获取到 alias 匹配到的对象
     const aliasedMatch = match({
       _normalized: true,
       path: aliasedPath
@@ -164,20 +179,27 @@ export function createMatcher (
       const matched = aliasedMatch.matched
       const aliasedRecord = matched[matched.length - 1]
       location.params = aliasedMatch.params
+      // url没有变化，但是别名匹配到url,也要同步更新 name, meta 信息
       return _createRoute(aliasedRecord, location)
     }
     return _createRoute(null, location)
   }
 
+// record, location, redirectedFrom
+//  判断 redirect 和 alias 后，返回 新创建的Route 对象
   function _createRoute (
     record: ?RouteRecord,
     location: Location,
     redirectedFrom?: Location
   ): Route {
     if (record && record.redirect) {
+      // 重定向
+      //   重定向的目标，可以是命名的路由， 或者一个方法，动态返回重定向的目标
       return redirect(record, redirectedFrom || location)
     }
-    if (record && record.matchAs) {
+      if (record && record.matchAs) {
+      // 别名，
+      //     访问 ‘/b’ url保存 '/b'， 但是路由匹配则为'/a',就像用户访问 ‘/a’一样。
       return alias(record, location, record.matchAs)
     }
     return createRoute(record, location, redirectedFrom, router)
@@ -220,6 +242,7 @@ function matchRoute (
   return true
 }
 
+// 拼接加上父路由，
 function resolveRecordPath (path: string, record: RouteRecord): string {
   return resolvePath(path, record.parent ? record.parent.path : '/', true)
 }
