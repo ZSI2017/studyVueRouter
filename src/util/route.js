@@ -56,6 +56,7 @@ export const START = createRoute(null, {
   path: '/'
 })
 
+// 对象 格式化为 数组
 function formatMatch (record: ?RouteRecord): Array<RouteRecord> {
   const res = []
   while (record) {
@@ -80,6 +81,7 @@ export function isSameRoute (a: Route, b: ?Route): boolean {
     return false
   } else if (a.path && b.path) {
     return (
+      // 比较 path, hash query, 判断是否为相同的route
       a.path.replace(trailingSlashRE, '') === b.path.replace(trailingSlashRE, '') &&
       a.hash === b.hash &&
       isObjectEqual(a.query, b.query)
@@ -96,8 +98,10 @@ export function isSameRoute (a: Route, b: ?Route): boolean {
   }
 }
 
+// 通过 Object.keys 遍历两个对象，递归比较每个属性值，
 function isObjectEqual (a = {}, b = {}): boolean {
   // handle null value #1566
+  // 避免a 或 b 被赋值为 null 的情况
   if (!a || !b) return a === b
   const aKeys = Object.keys(a)
   const bKeys = Object.keys(b)

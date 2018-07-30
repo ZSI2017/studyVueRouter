@@ -128,6 +128,7 @@ function getUrl (path) {
 
 function pushHash (path) {
   if (supportsPushState) {
+    // 使用pushState 无刷新 改变url
     pushState(getUrl(path))
   } else {
     window.location.hash = path

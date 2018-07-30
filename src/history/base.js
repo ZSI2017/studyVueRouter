@@ -108,8 +108,10 @@ export class History {
     if (
       isSameRoute(route, current) &&
       // in the case the route map has been dynamically appended to
+      // 每个 matched 数组，对应的 record 对象。
       route.matched.length === current.matched.length
     ) {
+      // 确保 刷新了url后，执行中断函数
       this.ensureURL()
       return abort()
     }
@@ -237,8 +239,8 @@ function resolveQueue (
   }
   return {
     updated: next.slice(0, i),
-    activated: next.slice(i),
-    deactivated: current.slice(i)
+    activated: next.slice(i),     // 不同部分
+    deactivated: current.slice(i) // 相同部分？ 不确定
   }
 }
 
