@@ -81,6 +81,7 @@ export class History {
       }
     }, err => {
       if (onAbort) {
+        // 存在错误回调，则
         onAbort(err)
       }
       if (err && !this.ready) {
