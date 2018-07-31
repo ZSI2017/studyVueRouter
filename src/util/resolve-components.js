@@ -82,6 +82,7 @@ export function flatMapComponents (
   }))
 }
 
+// 使其扁平化
 export function flatten (arr: Array<any>): Array<any> {
   return Array.prototype.concat.apply([], arr)
 }

@@ -33,7 +33,8 @@ export function createRoute (
     route.redirectedFrom = getFullPath(redirectedFrom, stringifyQuery)
   }
   // Object.freeze 冻结一个对象 防止被篡改
-  // 在vue 开发中可以 返回一个 Object.freeze 包裹的大型数组或者对象，防止做 getter 或 setter 转换。
+  // 在vue 开发中可以
+  // 返回一个 Object.freeze 包裹的大型数组或者对象，防止做 getter 或 setter 转换。
   return Object.freeze(route)
 }
 

@@ -232,6 +232,7 @@ function resolveQueue (
 } {
   let i
   const max = Math.max(current.length, next.length)
+  // 数组头部 为父节点， 尾部 为子节点
   for (i = 0; i < max; i++) {
     if (current[i] !== next[i]) {
       break
@@ -239,8 +240,8 @@ function resolveQueue (
   }
   return {
     updated: next.slice(0, i),
-    activated: next.slice(i),     // 不同部分
-    deactivated: current.slice(i) // 相同部分？ 不确定
+    activated: next.slice(i),     // 即将进入的路由部分不同部分
+    deactivated: current.slice(i) //  即将离开的路由部分相同部分？ 不确定
   }
 }
 
@@ -251,9 +252,9 @@ function extractGuards (
   reverse?: boolean
 ): Array<?Function> {
   const guards = flatMapComponents(records, (def, instance, match, key) => {
-    const guard = extractGuard(def, name)
+    const guard = extractGuard(def, name) // 组件中存在对应的 守卫，
     if (guard) {
-      return Array.isArray(guard)
+      return Array.isArray(guard)  // boundRouteGuard， 改变了guard 守卫函数的执行上下文
         ? guard.map(guard => bind(guard, instance, match, key))
         : bind(guard, instance, match, key)
     }
@@ -269,9 +270,11 @@ function extractGuard (
     // extend now so that global mixins are applied.
     def = _Vue.extend(def)
   }
+  // 触发的组件中 调用对应的 路由守护函数
   return def.options[key]
 }
 
+// 触发 路由中离开的 路由守护/ 路由钩子函数
 function extractLeaveGuards (deactivated: Array<RouteRecord>): Array<?Function> {
   return extractGuards(deactivated, 'beforeRouteLeave', bindGuard, true)
 }
