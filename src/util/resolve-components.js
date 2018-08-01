@@ -8,7 +8,7 @@ export function resolveAsyncComponents (matched: Array<RouteRecord>): Function {
     let hasAsync = false
     let pending = 0
     let error = null
-
+                              //component， instance, match, key ()
     flatMapComponents(matched, (def, _, match, key) => {
       // if it's a function and doesn't have cid attached,
       // assume it's an async component resolve function.
@@ -21,13 +21,14 @@ export function resolveAsyncComponents (matched: Array<RouteRecord>): Function {
 
         const resolve = once(resolvedDef => {
           if (isESModule(resolvedDef)) {
+            // 如果是es6的module模块，则可以获取到模块中导出的default值
             resolvedDef = resolvedDef.default
           }
           // save resolved on async factory in case it's used elsewhere
           def.resolved = typeof resolvedDef === 'function'
-            ? resolvedDef
+            ? resolvedDef    //
             : _Vue.extend(resolvedDef)
-          match.components[key] = resolvedDef
+          match.components[key] = resolvedDef  // 拿取到引入的组件模块，保存到components 属性中，默认是 default ，
           pending--
           if (pending <= 0) {
             next()
@@ -52,6 +53,7 @@ export function resolveAsyncComponents (matched: Array<RouteRecord>): Function {
           reject(e)
         }
         if (res) {
+          // 与vue组件调用的返回值耦合。如果返回值同样是 promise， 则继续执行。
           if (typeof res.then === 'function') {
             res.then(resolve, reject)
           } else {
@@ -69,6 +71,7 @@ export function resolveAsyncComponents (matched: Array<RouteRecord>): Function {
   }
 }
 
+// 对 matched 对象数组中的每一个对象的 每个属性 执行 fn 回调函数。，构建一个二维数组。
 export function flatMapComponents (
   matched: Array<RouteRecord>,
   fn: Function
@@ -91,7 +94,7 @@ const hasSymbol =
   typeof Symbol === 'function' &&
   typeof Symbol.toStringTag === 'symbol'
 
-function isESModule (obj) {
+function isESModule (obj) {    // 判断 obj 是否为一个 module模块
   return obj.__esModule || (hasSymbol && obj[Symbol.toStringTag] === 'Module')
 }
 
@@ -99,6 +102,9 @@ function isESModule (obj) {
 // so the resolve/reject functions may get called an extra time
 // if the user uses an arrow function shorthand that happens to
 // return that Promise.
+// 保证函数只触发一次
+// 在webpack 2 中 使用 动态 import 语法来定义代码分快点，
+// component:() => import('./Foo.vue')
 function once (fn) {
   let called = false
   return function (...args) {

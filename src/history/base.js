@@ -122,17 +122,18 @@ export class History {
       activated
     } = resolveQueue(this.current.matched, route.matched)
 
+    // 全部都放在数组中，保证执行的先后顺序
     const queue: Array<?NavigationGuard> = [].concat(
       // in-component leave guards
-      extractLeaveGuards(deactivated),
+      extractLeaveGuards(deactivated),   //在失活的组件中，调用组件内部的  beforeRouteLeave 守卫
       // global before hooks
-      this.router.beforeHooks,
+      this.router.beforeHooks,          // 调用绑定在router 上的 beforeHooks 全局的回调函数。
       // in-component update hooks
-      extractUpdateHooks(updated),
+      extractUpdateHooks(updated),      // 在重用的组件里调用 beforeRouteUpdate 路由守卫
       // in-config enter guards
-      activated.map(m => m.beforeEnter),
+      activated.map(m => m.beforeEnter),  // 路由配置中 调用 beforeEnter 钩子函数
       // async components
-      resolveAsyncComponents(activated)
+      resolveAsyncComponents(activated)   // 解析异步的路由组件
     )
 
     this.pending = route
@@ -239,9 +240,9 @@ function resolveQueue (
     }
   }
   return {
-    updated: next.slice(0, i),
+    updated: next.slice(0, i),    // 保存复用的组件
     activated: next.slice(i),     // 即将进入的路由部分不同部分
-    deactivated: current.slice(i) //  即将离开的路由部分相同部分？ 不确定
+    deactivated: current.slice(i) // 即将离开的路由部分相同部分？ 不确定
   }
 }
 
@@ -285,6 +286,7 @@ function extractUpdateHooks (updated: Array<RouteRecord>): Array<?Function> {
 
 function bindGuard (guard: NavigationGuard, instance: ?_Vue): ?NavigationGuard {
   if (instance) {
+    // 通过返回一个命名函数， apply 模拟 bind 方法。
     return function boundRouteGuard () {
       return guard.apply(instance, arguments)
     }
