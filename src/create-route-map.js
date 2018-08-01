@@ -89,7 +89,7 @@ function addRouteRecord (
   const record: RouteRecord = {
     path: normalizedPath,
     regex: compileRouteRegex(normalizedPath, pathToRegexpOptions),
-    components: route.components || { default: route.component }, // 命名视图路由组件，多个视图的多个组件
+    components: route.components || { default: route.component }, // 命名视图路由组件，多个视图的多个组件。
     instances: {},
     name,
     parent,
