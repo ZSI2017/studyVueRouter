@@ -145,7 +145,9 @@ export class History {
         hook(route, current, (to: any) => {
           if (to === false || isError(to)) {
             // next(false) -> abort navigation, ensure current URL
+            // 改变url,不刷新页面。
             this.ensureURL(true)
+            // 触发所有的错误回调函数。
             abort(to)
           } else if (
             typeof to === 'string' ||
@@ -155,7 +157,8 @@ export class History {
             ))
           ) {
             // next('/') or next({ path: '/' }) -> redirect
-            abort()
+            abort() // 中断当前跳转
+            // 页面重定向到 next 参数中对应的path;
             if (typeof to === 'object' && to.replace) {
               this.replace(to)
             } else {
@@ -163,11 +166,12 @@ export class History {
             }
           } else {
             // confirm transition and pass on the value
+            // 执行队列中，下一个路由守护。
             next(to)
           }
         })
       } catch (e) {
-        abort(e)
+        abort(e) //触发所有的错误回调函数。
       }
     }
 
