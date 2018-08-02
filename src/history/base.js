@@ -71,11 +71,12 @@ export class History {
     const route = this.router.match(location, this.current) // 返回 经过 Object.freeze 不可修改的 Route 对象
     this.confirmTransition(route, () => {
       this.updateRoute(route)
+      // 跳转的路由守卫 触发完成后
       onComplete && onComplete(route)
       this.ensureURL()
 
       // fire ready cbs once
-      if (!this.ready) {
+      if (!this.ready) { // onReady 在路由完成初始导航时调用。
         this.ready = true
         this.readyCbs.forEach(cb => { cb(route) })
       }
@@ -176,20 +177,23 @@ export class History {
     }
 
     runQueue(queue, iterator, () => {
-      const postEnterCbs = []
+      const postEnterCbs = []  // 收集 beforeRouteEnter 对应的回调函数
       const isValid = () => this.current === route
       // wait until async components are resolved before
       // extracting in-component enter guards
       const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid)
-      const queue = enterGuards.concat(this.router.resolveHooks)
+      const queue = enterGuards.concat(this.router.resolveHooks) // 即将进入的路由的钩子函数，以及完成后的钩子函数
+      // 按顺序执行数组中的函数
       runQueue(queue, iterator, () => {
         if (this.pending !== route) {
           return abort()
         }
         this.pending = null
+        // 执行完成后的回调函数。
         onComplete(route)
-        if (this.router.app) {
+        if (this.router.app) { // 在vue 实例中注册了路由实例的时候，保存了 vue 实例的引用
           this.router.app.$nextTick(() => {
+            // 执行在next 方法中传入的回调函数。
             postEnterCbs.forEach(cb => { cb() })
           })
         }
@@ -301,11 +305,12 @@ function extractEnterGuards (
   activated: Array<RouteRecord>,
   cbs: Array<Function>,
   isValid: () => boolean
-): Array<?Function> {
+): Array<?Function> {                             //  bind(guard, instance, match, key)
   return extractGuards(activated, 'beforeRouteEnter', (guard, _, match, key) => {
     return bindEnterGuard(guard, match, key, cbs, isValid)
   })
 }
+
 
 function bindEnterGuard (
   guard: NavigationGuard,
@@ -315,7 +320,9 @@ function bindEnterGuard (
   isValid: () => boolean
 ): NavigationGuard {
   return function routeEnterGuard (to, from, next) {
+    // 调用组件中存在的守卫。
     return guard(to, from, cb => {
+      // 在使用next,传入的参数为函数，则保存在 postEnterCbs 数组中。
       next(cb)
       if (typeof cb === 'function') {
         cbs.push(() => {
@@ -324,6 +331,7 @@ function bindEnterGuard (
           // the instance may not have been registered at this time.
           // we will need to poll for registration until current route
           // is no longer valid.
+          // 轮询请求是否被注册，直到当前路由被销毁。
           poll(cb, match.instances, key, isValid)
         })
       }
@@ -341,8 +349,10 @@ function poll (
     instances[key] &&
     !instances[key]._isBeingDestroyed // do not reuse being destroyed instance
   ) {
+    // 轮询 检查到当前实例已经被注册了。则触发回调。
     cb(instances[key])
   } else if (isValid()) {
+    // 在当前路由有效的情况下，轮询请求
     setTimeout(() => {
       poll(cb, instances, key, isValid)
     }, 16)
