@@ -170,7 +170,7 @@ export class History {
           }
         })
       } catch (e) {
-        abort(e) //触发所有的错误回调函数。
+        abort(e)  // 触发所有的错误回调函数。
       }
     }
 
