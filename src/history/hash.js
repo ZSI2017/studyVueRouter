@@ -40,6 +40,8 @@ export class HashHistory extends History {
         return
       }
       this.transitionTo(getHash(), route => {
+        // 路由守卫 触发完成后的回调
+        // 同时异步路由组件已经解析完成。
         if (supportsScroll) {
           handleScroll(this.router, route, current, true)
         }
