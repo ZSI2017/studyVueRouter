@@ -45,6 +45,8 @@ export class HashHistory extends History {
         if (supportsScroll) {
           handleScroll(this.router, route, current, true)
         }
+        // 支持 pushState in  window.history;
+        // 不支持的情况下，使用 window.location.replace 替换路由中的hash值。
         if (!supportsPushState) {
           replaceHash(route.fullPath)
         }

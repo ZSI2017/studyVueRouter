@@ -4,6 +4,13 @@ import type VueRouter from '../index'
 import { stringifyQuery } from './query'
 
 const trailingSlashRE = /\/?$/
+//function isSameRoute (a: Route, b: ?Route): boolean {
+function foo(x: ?number): string {
+  if (x) {
+    return x
+  }
+  return 'default string'
+}
 
 export function createRoute (
   record: ?RouteRecord,
@@ -11,6 +18,7 @@ export function createRoute (
   redirectedFrom?: ?Location,
   router?: VueRouter
 ): Route {
+  console.log('dddd')
   const stringifyQuery = router && router.options.stringifyQuery
 
   let query: any = location.query || {}

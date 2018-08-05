@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
+const path = require('path')
 
 // 1. Use plugin.
 // This installs <router-view> and <router-link>,
@@ -14,7 +15,7 @@ const Bar = { template: '<div>bar</div>' }
 // 3. Create the router
 const router = new VueRouter({
   mode: 'hash',
-  base: __dirname,
+  base: 'smc',
   routes: [
     { path: '/', component: Home }, // all paths are defined without the hash.
     { path: '/foo', component: Foo },

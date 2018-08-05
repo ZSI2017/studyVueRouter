@@ -108,7 +108,7 @@ function addRouteRecord (
     // Warn if route is named, does not redirect and has a default child route.
     // If users navigate to this route by name, the default child will
     // not be rendered (GH Issue #629)
-    //使用父类的命名路由，不会渲染默认子路由，必须使用path 路由。
+    // 使用父类的命名路由，不会渲染默认子路由，必须使用path 路由。
     if (process.env.NODE_ENV !== 'production') {
       if (route.name && !route.redirect && route.children.some(child => /^\/?$/.test(child.path))) {
         warn(
@@ -170,11 +170,7 @@ function addRouteRecord (
         `{ name: "${name}", path: "${record.path}" }`
       )
     }
-
-
-
-
-
+  }
 }
 
 function compileRouteRegex (path: string, pathToRegexpOptions: PathToRegexpOptions): RouteRegExp {
