@@ -70,7 +70,7 @@ export class History {
   transitionTo (location: RawLocation, onComplete?: Function, onAbort?: Function) {
     const route = this.router.match(location, this.current) // 返回 经过 Object.freeze 不可修改的 Route 对象
     this.confirmTransition(route, () => {
-      // 路由改变，触发 
+      // 路由改变，触发
       this.updateRoute(route)
       // 跳转的路由守卫 触发完成后
       onComplete && onComplete(route)
@@ -122,7 +122,7 @@ export class History {
       updated,
       deactivated,
       activated
-    } = resolveQueue(this.current.matched, route.matched)
+    } = resolveQueue(this.current.matched, route.matched)   // 解析出三个队列。
 
     // 全部都放在数组中，保证执行的先后顺序
     const queue: Array<?NavigationGuard> = [].concat(

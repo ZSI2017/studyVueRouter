@@ -103,6 +103,7 @@ export default {
 }
 
 function guardEvent (e) {
+  // 对route-link 组件上的事件进行过滤，然后再决定是否要跳转
   // don't redirect with control keys
   if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return
   // don't redirect when preventDefault called
