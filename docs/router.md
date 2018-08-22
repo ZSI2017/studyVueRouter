@@ -146,7 +146,79 @@ match (
 ```
 函数入参，就是`options.routes`，用户传入的路由配置数组，这里可以看出，传入routes 数组，里面应该是在routes的基础上修改，记录所有的路由栈。
 转到 `create-matcher.js`文件，
-`createMatcher`构造函数里面，定义了match 方法。
+`createMatcher`构造函数里面，进去就通过`createRouteMap`转换了routes 数组，返回 `pathList`,`pathMap`,`nameMap`三个变量，
+具体定义可以转到`create-route-map.js`文件
+``` js
+routes: Array<RouteConfig>,  // routes 数组中，保存着path ,component,name;
+oldPathList?: Array<string>,
+oldPathMap?: Dictionary<RouteRecord>,
+oldNameMap?: Dictionary<RouteRecord>
+```
+这是入参，里面只有routes 用户定义的数组是必需的，
+
+``` js
+export function createRouteMap (
+  routes: Array<RouteConfig>,  // routes 数组中，保存着path ,component,name;
+  oldPathList?: Array<string>,
+  oldPathMap?: Dictionary<RouteRecord>,
+  oldNameMap?: Dictionary<RouteRecord>
+): {
+  pathList: Array<string>;
+  pathMap: Dictionary<RouteRecord>;
+  nameMap: Dictionary<RouteRecord>;
+} {
+  // the path list is used to control path matching priority
+  const pathList: Array<string> = oldPathList || []
+  // $flow-disable-line
+  const pathMap: Dictionary<RouteRecord> = oldPathMap || Object.create(null)
+  // $flow-disable-line
+  const nameMap: Dictionary<RouteRecord> = oldNameMap || Object.create(null)
+
+  routes.forEach(route => {
+    addRouteRecord(pathList, pathMap, nameMap, route)
+  })
+
+  // ensure wildcard routes are always at the end
+  // 保证 通配符 '*' path 总是出现在 pathList 最末尾。
+  for (let i = 0, l = pathList.length; i < l; i++) {
+    if (pathList[i] === '*') {
+      pathList.push(pathList.splice(i, 1)[0])
+      l--
+      i--
+    }
+  }
+
+  return {
+    pathList,
+    pathMap,
+    nameMap
+  }
+}
+```
+
+`PathList`数组类型，保存着所有的Path, `pathMap`对象，保存 path指向record对象的键值对，而record 对象，在addRouteRecord 方法中定义了，
+``` js
+const record: RouteRecord = {
+  path: normalizedPath,
+  regex: compileRouteRegex(normalizedPath, pathToRegexpOptions),
+  components: route.components || { default: route.component }, // 命名视图路由组件，多个视图的多个组件。
+  instances: {},
+  name,
+  parent,
+  matchAs,
+  redirect: route.redirect,    //  路由重定向。
+  beforeEnter: route.beforeEnter,  // 路由守护
+  meta: route.meta || {},          // 路由元信息。
+  props: route.props == null       //
+    ? {}
+    : route.components
+      ? route.props
+      : { default: route.props }
+}
+```
+
+
+定义了match 方法。
 
 ``` js
 function match (
