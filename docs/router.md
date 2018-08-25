@@ -414,84 +414,95 @@ export function parsePath (path: string): {
 ```
 可以看成，解析raw,得到对应的参数。
 接着拼接 parsePath.path，得到path。
-如果raws是location对象， 可以利用`resolveQuery()`合并raw.query 和 parsePath.query 参数，最后返回新的location 对象
+如果raws是location对象， 可以利用`resolveQuery()`合并raw.query 和 parsePath.query 参数，最后返回新的location 对象。
 
-
-
-
-定义了match 方法。
-
+再回到`match`函数,得到新的location对象后，开始利用 `name` 或者 `path` 匹配路由。这里先看`path`进行匹配的情况，
 ``` js
-function match (
-  raw: RawLocation,
-  currentRoute?: Route,
-  redirectedFrom?: Location
-): Route {
-  // raw => getHash() 获取到location.href 中的 # 后面的值。
-  // currentRoute: Route; 对应当前 Route 实例。
-  // false。
-  // router vueRouter 实例
-  const location = normalizeLocation(raw, currentRoute, false, router)
-  /*
-   *通过 normalizeLocation
-   * {
-       _normalized: true,
-       path,
-       query,
-       hash
-      }
-      返回处理过的 path, query，hash .
-   */
-  const { name } = location
-
-  if (name) {
-    const record = nameMap[name]
-    if (process.env.NODE_ENV !== 'production') {
-      warn(record, `Route with name '${name}' does not exist`)
-    }
-    if (!record) return _createRoute(null, location)
-    const paramNames = record.regex.keys
-      .filter(key => !key.optional)
-      .map(key => key.name)
-
-    if (typeof location.params !== 'object') {
-      location.params = {}
-    }
-
-    if (currentRoute && typeof currentRoute.params === 'object') {
-      for (const key in currentRoute.params) {
-        if (!(key in location.params) && paramNames.indexOf(key) > -1) {
-          location.params[key] = currentRoute.params[key]
-        }
-      }
-    }
-
-    if (record) {
-      location.path = fillParams(record.path, location.params, `named route "${name}"`)
+} else if (location.path) {
+  // 如果 未使用命名路由，
+  //
+  location.params = {}
+  for (let i = 0; i < pathList.length; i++) {
+    const path = pathList[i]
+    const record = pathMap[path]
+    // path.match 测试是否匹配到了url，
+    // 匹配成功 -》
+    if (matchRoute(record.regex, location.path, location.params)) {
+      // 如果匹配成功，直接返回
       return _createRoute(record, location, redirectedFrom)
     }
-  } else if (location.path) {
-    // 如果 未使用命名路由，
-    //
-    location.params = {}
-    for (let i = 0; i < pathList.length; i++) {
-      const path = pathList[i]
-      const record = pathMap[path]
-      // path.match 测试是否匹配到了url，
-      // 匹配成功 -》
-      if (matchRoute(record.regex, location.path, location.params)) {
-        // 如果匹配成功，直接返回
-        return _createRoute(record, location, redirectedFrom)
-      }
-    }
   }
-  // no match
-  return _createRoute(null, location)
 }
-
 ```
+遍历最开始得到的`pathlist`,利用`matchRoute`匹配，并提取出url中携带的参数，存在` location.params`对象中
 
+``` js
+  const m = path.match(regex)
+```
+在`matchRoute`函数中，主要利用传入的 `record.regex`正则匹配path，匹配成功后，调用`_createRoute()`
+``` js
+// record, location, redirectedFrom
+//  判断 redirect 和 alias 后，返回 新创建的Route 对象
+  function _createRoute (
+    record: ?RouteRecord,
+    location: Location,
+    redirectedFrom?: Location
+  ): Route {
+    if (record && record.redirect) {
+      // 重定向
+      //   重定向的目标，可以是命名的路由， 或者一个方法，动态返回重定向的目标
+      return redirect(record, redirectedFrom || location)
+    }
+      if (record && record.matchAs) {
+      // 别名，
+      //     访问 ‘/b’ url保存 '/b'， 但是路由匹配则为'/a',就像用户访问 ‘/a’一样。
+      return alias(record, location, record.matchAs)
+    }
+    return createRoute(record, location, redirectedFrom, router)
+  }
+```
+`createRoute`方法，在`util/route.js`文件中，创建经过`Object.freeze`处理后，防止被篡改的Route 对象，
+``` js
+const route: Route = {
+  name: location.name || (record && record.name),
+  meta: (record && record.meta) || {},
+  path: location.path || '/',
+  hash: location.hash || '',
+  query,
+  params: location.params || {},
+  fullPath: getFullPath(location, stringifyQuery),
+  matched: record ? formatMatch(record) : []
+}
+```
+跟location对象类似，都有记录路由信息的 name,path,hash,query,params等参数，fullPath则把path,query,hash 拼接起来的完整url, matched 解析record的父子树状结构，循环转化为扁平的数组结构。
+回头看看，`createMatcher`方法，最后返回`match` 和 `addRoutes`两个方法，`match()`执行后，就是上面分析出来的创建Route实例，`addRoutes`对外暴露出接口，动态修改`pathList`,`pathMap`, `nameMap`记录。
 
+拿到了路由匹配后的Route实例， 关联着path 到RouteRecord 实例的 pathMap等信息后，就可以开始看具体的路由匹配动作是如何完成的。
+
+### confirmTransition 路由转换。
+    回到history/base.js，执行完`match`后，调用 `confirmTransition()`，再看看下面该函数的定义，传入了`route`对象，跳转过程中，对应的钩子函数都是按顺序执行的，所以在存在`onComplete`路由跳转完成后的回调，以及 `onAbort`路由跳转中断的错误函数。
+在`confirmTransition`函数中。
+开始会获得`this.current`中保存的当前匹配到的路由信息， `constructor`构造函数中，初始化了`this.current = START`，转到`util/route.js`中
+``` js
+// the starting route that represents the initial state
+export const START = createRoute(null, {
+  path: '/'
+})  
+```
+同样使用`match`方法中用到的`createRoute`方法，创建一个初始化的Route对象,后面在执行`onComplete`回调的时候，也会更新`this.current`指向的Route 对象，具体可以在`history/base.js`文件`updateRoute`函数中可以找到。
+回到`confirmTransition`函数中. 通过isSAameRoute 和 route对象中保存的扁平数组matched的长度,判断如果路径没变
+``` js
+if (
+  isSameRoute(route, current) &&
+  // in the case the route map has been dynamically appended to
+  // 每个 matched 数组，对应的 record 对象。
+  route.matched.length === current.matched.length
+) {
+  // 确保 刷新了url后，执行中断函数
+  this.ensureURL()
+  return abort()
+}
+```
 
 
 
