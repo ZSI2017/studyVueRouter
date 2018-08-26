@@ -490,7 +490,7 @@ export const START = createRoute(null, {
 })  
 ```
 同样使用`match`方法中用到的`createRoute`方法，创建一个初始化的Route对象,后面在执行`onComplete`回调的时候，也会更新`this.current`指向的Route 对象，具体可以在`history/base.js`文件`updateRoute`函数中可以找到。
-回到`confirmTransition`函数中. 通过isSAameRoute 和 route对象中保存的扁平数组matched的长度,判断如果路径没变
+回到`confirmTransition`函数中. 通过isSAameRoute 和 route对象中保存的扁平数组matched的长度,判断如果路径没变执行`abort()`中断跳转。
 ``` js
 if (
   isSameRoute(route, current) &&
@@ -503,23 +503,457 @@ if (
   return abort()
 }
 ```
+继续往下看，利用`resolveQueue`处理三种不同的队列
+``` js
+function resolveQueue (
+  current: Array<RouteRecord>,
+  next: Array<RouteRecord>
+): {
+  updated: Array<RouteRecord>,
+  activated: Array<RouteRecord>,
+  deactivated: Array<RouteRecord>
+} {
+  let i
+  const max = Math.max(current.length, next.length)
+  // 数组头部 为父节点， 尾部 为子节点
+  for (i = 0; i < max; i++) {
+    if (current[i] !== next[i]) {
+      break
+    }
+  }
+  return {
+    updated: next.slice(0, i),    // 保存复用的组件
+    activated: next.slice(i),     // 即将进入的路由部分不同部分
+    deactivated: current.slice(i) // 即将离开的路由部分相同部分
+  }
+}
+```
+`resolve`方法遍历current 和next中的 RouteRecord最长的数组，直接比较对象，利用slice 切割出上面注释描述的三种情况。下面看到最关键的导航钩子函数，
+``` js
+// 全部都放在数组中，保证执行的先后顺序
+const queue: Array<?NavigationGuard> = [].concat(
+  // in-component leave guards
+  extractLeaveGuards(deactivated),   //在失活的组件中，调用组件内部的  beforeRouteLeave 守卫
+  // global before hooks
+  this.router.beforeHooks,          // 调用绑定在router 上的 beforeHooks 全局的回调函数。
+  // in-component update hooks
+  extractUpdateHooks(updated),      // 在重用的组件里调用 beforeRouteUpdate 路由守卫
+  // in-config enter guards
+  activated.map(m => m.beforeEnter),  // 路由配置中 调用 beforeEnter 钩子函数
+  // async components
+  resolveAsyncComponents(activated)   // 解析异步的路由组件
+)
+```
+放在数组里面，保证执行的先后顺序，根据官方给出的完整的导航钩子解析流程
+完整的导航解析流程
+1.导航被触发。
+2.在失活的组件里调用离开守卫。
+3.调用全局的 beforeEach 守卫。
+4.在重用的组件里调用 beforeRouteUpdate 守卫 (2.2+)。
+5.在路由配置里调用 beforeEnter。
+6.解析异步路由组件。
 
+然后，具体分析下每一步是如何执行的，
+- `extractLeaveGuards`在失活的组件中调用。
+   函数内部调用了`extractGuards`,后面的钩子函数也复用了这个方法。
+   ``` js
+   // 触发 路由中离开的 路由守护/ 路由钩子函数
+   function extractLeaveGuards (deactivated: Array<RouteRecord>): Array<?Function> {
+     return extractGuards(deactivated, 'beforeRouteLeave', bindGuard, true)
+   }
+   ```
+   里面的参数`bindGuard`，在下面可以找到
+   ``` js
+   function bindGuard (guard: NavigationGuard, instance: ?_Vue): ?NavigationGuard {
+     if (instance) {
+       // 通过返回一个命名函数， apply 模拟 bind 方法。
+       return function boundRouteGuard () {
+         return guard.apply(instance, arguments)
+       }
+     }
+   }
+   ```
+   改变组件中guard钩子函数的执行上下文，方便在函数内部拿到vue对象,同时返回一个命名函数，主要为了在前面的hook函数触发时才进行调用。
 
+  再看下`extractGuards`
+  ``` js
+  function extractGuards (
+    records: Array<RouteRecord>,
+    name: string,
+    bind: Function,
+    reverse?: boolean
+  ): Array<?Function> {
+    const guards = flatMapComponents(records, (def, instance, match, key) => {
+      const guard = extractGuard(def, name) // 组件中存在对应的 守卫，
+      if (guard) {
+        return Array.isArray(guard)  // boundRouteGuard， 改变了guard 守卫函数的执行上下文
+          ? guard.map(guard => bind(guard, instance, match, key))
+          : bind(guard, instance, match, key)
+      }
+    })
+    return flatten(reverse ? guards.reverse() : guards)
+  }
+  ```
+  主要使用了`flatMapComponents()`获取所有records中每一项对应组件中的所有导航守卫，得到的结果是一维数组。
+  转到`util/resolve-components.js`文件。
+  ``` js
+  export function flatMapComponents (
+    matched: Array<RouteRecord>,
+    fn: Function
+  ): Array<?Function> {
+    return flatten(matched.map(m => {
+      return Object.keys(m.components).map(key => fn(
+        m.components[key],
+        m.instances[key],
+        m, key
+      ))
+    }))
+  }
 
+  // 使其扁平化,二维数组，转化为一维数组。
+  export function flatten (arr: Array<any>): Array<any> {
+    return Array.prototype.concat.apply([], arr)
+  }
+  ```
+ 遍历传入的RouteRecord 数组，获取每一个record对应的components中的key,执行`fn`,`fn`对应`extractGuards`函数中的传入`flatMapComponents()`的匿名函数，函数内部，通过`extractGuard`,提取每个组件中name 对应的钩子函数，比如前面name就是‘beforeRouteLeave’，到这里，就获取到了所有的即将离开的钩子函数。
 
+- 调用全局的 beforeEach 守卫
+  `this.router.beforeHooks`，回到`index.js`
+  ``` js
+  beforeEach (fn: Function): Function {
+    return registerHook(this.beforeHooks, fn)
+  }
+  ```
+  利用暴露出的beforeEach，就可以往beforeHooks中注册全局守卫
 
+- beforeRouteUpdate
+  ``` js
+    function extractUpdateHooks (updated: Array<RouteRecord>): Array<?Function> {
+      return extractGuards(updated, 'beforeRouteUpdate', bindGuard)
+    }
+  ```
+  与 离开的路由钩子类似，只是传入的name改为`beforeRouteUpdate`;
+- 路由配置中的beforeEnter 钩子。
+  每个即将进入的组件内部，用户自定义的路由钩子。
 
+- 解析异步的路由组件
+  转到 `util/resolve-components.js`文件，`resolveAsyncComponents`函数返回一个匿名函数，传入参数也是`to`，`from`，`next`，也使用了`flatMapComponents`，遍历matched 数组中每个Route对象上的组件中的key值，在匿名函数内部，flatMapComponents函数中，解析异步组件，定义了`resolve`和`reject`，解析异步组件，在`resolve`里面，通过`match.components[key] = resolvedDef`,拿到导出的异步组件，
+  ``` js
+  export function resolveAsyncComponents (matched: Array<RouteRecord>): Function {
+    return (to, from, next) => {
+      let hasAsync = false
+      let pending = 0
+      let error = null
+                                //component， instance, match, key ()
+      flatMapComponents(matched, (def, _, match, key) => {
+        // if it's a function and doesn't have cid attached,
+        // assume it's an async component resolve function.
+        // we are not using Vue's default async resolving mechanism because
+        // we want to halt the navigation until the incoming component has been
+        // resolved.
+        if (typeof def === 'function' && def.cid === undefined) {
+          hasAsync = true
+          pending++
 
+          const resolve = once(resolvedDef => {
+            if (isESModule(resolvedDef)) {
+              // 如果是es6的module模块，则可以获取到模块中导出的default值
+              resolvedDef = resolvedDef.default
+            }
+            // save resolved on async factory in case it's used elsewhere
+            def.resolved = typeof resolvedDef === 'function'
+              ? resolvedDef    //
+              : _Vue.extend(resolvedDef)
+            match.components[key] = resolvedDef  // 拿取到引入的组件模块，保存到components 属性中，默认是 default ，
+            pending--
+            if (pending <= 0) {
+              next()
+            }
+          })
 
+          const reject = once(reason => {
+            const msg = `Failed to resolve async component ${key}: ${reason}`
+            process.env.NODE_ENV !== 'production' && warn(false, msg)
+            if (!error) {
+              error = isError(reason)
+                ? reason
+                : new Error(msg)
+              next(error)
+            }
+          })
 
+          let res
+          try {
+            res = def(resolve, reject)
+          } catch (e) {
+            reject(e)
+          }
+          if (res) {
+            // 与vue组件调用的返回值耦合。如果返回值同样是 promise， 则继续执行。
+            if (typeof res.then === 'function') {
+              res.then(resolve, reject)
+            } else {
+              // new syntax in Vue 2.3
+              const comp = res.component
+              if (comp && typeof comp.then === 'function') {
+                comp.then(resolve, reject)
+              }
+            }
+          }
+        }
+      })
 
+      if (!hasAsync) next()
+    }
+  }
+  ```
+得到上面queue 数组中按顺序存放的钩子函数后，下面就通过`runQueue`执行所有的函数，跟上面queue队列中的存放顺序刚好一致，如何保证执行的先后顺序，就可以看`runQueue` 函数,后面执行的时候也会将queue队列传递出去了，
 
+``` js
+export function runQueue (queue: Array<?NavigationGuard>, fn: Function, cb: Function) {
+  const step = index => {
+    if (index >= queue.length) {
+      cb()
+    } else {
+      if (queue[index]) {
+        // 执行完当前钩子后，执行数组中的下一个
+        fn(queue[index], () => {
+          step(index + 1)
+        })
+      } else {
+        step(index + 1)
+      }
+    }
+  }
+  step(0)
+}
+```
+`runQueue`实现了类似迭代器的功能，index 控制遍历queue数组的下标，每次执行完`fn`后，就`+1`,递归`step`执行，最后遍历完数组，执行`cb`回调函数。
+`fn`函数就是传入的 `iterator`函数，回到函数里面。
+``` js
+const iterator = (hook: NavigationGuard, next) => {
+  if (this.pending !== route) {
+    return abort()
+  }
+  try {
+    hook(route, current, (to: any) => {
+      if (to === false || isError(to)) {
+        // next(false) -> abort navigation, ensure current URL
+        // 改变url,不刷新页面。
+        this.ensureURL(true)
+        // 触发所有的错误回调函数。
+        abort(to)
+      } else if (
+        typeof to === 'string' ||
+        (typeof to === 'object' && (
+          typeof to.path === 'string' ||
+          typeof to.name === 'string'
+        ))
+      ) {
+        // next('/') or next({ path: '/' }) -> redirect
+        abort() // 中断当前跳转
+        // 页面重定向到 next 参数中对应的path;
+        if (typeof to === 'object' && to.replace) {
+          this.replace(to)
+        } else {
+          this.push(to)
+        }
+      } else {
+        // confirm transition and pass on the value
+        // 执行队列中，下一个路由守护。
+        next(to)
+      }
+    })
+  } catch (e) {
+    abort(e)  // 触发所有的错误回调函数。
+  }
+}
+```
+里面的hook,对应queue数组中不同的钩子函数，next指向数组中的下一项，首先对比一下官网对于路由守卫的用法
+``` js
+你可以使用 router.beforeEach 注册一个全局前置守卫：
 
+const router = new VueRouter({ ... })
 
+router.beforeEach((to, from, next) => {
+  // ...
+})
+```
+里面的`to`,`from`,`next`对应hook里面的`route`，`current`,`(to) => {}`，其中`route`和`current`是路由对象，最后的匿名函数，判断`to`参数：
+ - `false`中断当前导航，
+ - string or object 导航到新的路由
+ - 空，执行数组中的下一个钩子
 
+上面路由跳转后，执行完queue数组中的钩子函数后,也就是完整的路由解析流程完成后，接着就执行runQueue 函数中传入的匿名函数
+``` js
+runQueue(queue, iterator, () => {
+  const postEnterCbs = []  // 收集 beforeRouteEnter 对应的回调函数
+  const isValid = () => this.current === route
+  // wait until async components are resolved before
+  // extracting in-component enter guards
+  const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid)
+  const queue = enterGuards.concat(this.router.resolveHooks) // 即将进入的路由的钩子函数，以及完成后的钩子函数
+  // 按顺序执行数组中的函数
+  runQueue(queue, iterator, () => {
+    if (this.pending !== route) {
+      return abort()
+    }
+    this.pending = null
+    // 执行完成后的回调函数。
+    onComplete(route)
+    if (this.router.app) { // 在vue 实例中注册了路由实例的时候，保存了 vue 实例的引用
+      this.router.app.$nextTick(() => {
+        // 执行在next 方法中传入的回调函数。
+        postEnterCbs.forEach(cb => { cb() })
+      })
+    }
+  })
+})
+```
 
+`extractEnterGuards`解析`beforeRouteEnter`,同样使用`extractGuards`方法，传入的name 对应 `beforeRouteEnter`, 区别在于bind 函数不同，使用了`bindEnterGuard`，
+``` js
+function bindEnterGuard (
+  guard: NavigationGuard,
+  match: RouteRecord,
+  key: string,
+  cbs: Array<Function>,
+  isValid: () => boolean
+): NavigationGuard {
+  return function routeEnterGuard (to, from, next) {
+    // 调用组件中存在的守卫。
+    return guard(to, from, cb => {
+      // 在使用next,传入的参数为函数，则保存在 postEnterCbs 数组中。
+      next(cb)
+      if (typeof cb === 'function') {
+        cbs.push(() => {
+          // #750
+          // if a router-view is wrapped with an out-in transition,
+          // the instance may not have been registered at this time.
+          // we will need to poll for registration until current route
+          // is no longer valid.
+          // 轮询请求是否被注册，直到当前路由被销毁。
+          poll(cb, match.instances, key, isValid)
+        })
+      }
+    })
+  }
+}
+```
+返回`routeEnterGuard`函数，最后会通过hook 函数执行，从而执行了之前组件中定义的路由`guard()`，但是在进入路由的钩子函数执行的时候可能会拿不动vue实例，所以把cb ，保存在了数组里面，也就是前面定义的postEnterCb数组。然后在回调里面，针对一些特殊情况，不一定拿到组件实例，使用了`poll`轮询方法，设置`setTimeout`，直到拿到组件实例，执行 cb。
 
+执行完beforeRouteEnter钩子函数，下面`const queue = enterGuards.concat(this.router.resolveHooks) `，获取用户定义的全局 `beforeResolve`钩子函数,与前面路由解析流程中，执行`this.router.beforeHooks`类似，在`index.js`中可以找到对应的方法。
+``` js
+beforeResolve (fn: Function): Function {
+  return registerHook(this.resolveHooks, fn)
+}
 
+```
+内部`queue`数组中所有的函数执行完成后，同样执行传入的匿名回调函数。
+函数体内`onComplete()`,对应在`transitionTo`内部调用`this.confirmTransition`时，传入的第二个匿名函数，
+``` js
+() => {
+  // 路由改变，触发
+  this.updateRoute(route)
+  // 跳转的路由守卫 触发完成后
+  onComplete && onComplete(route)
+  this.ensureURL()
+
+  // fire ready cbs once
+  if (!this.ready) { // onReady 在路由完成初始导航时调用。
+    this.ready = true
+    this.readyCbs.forEach(cb => { cb(route) })
+  }
+}
+```
+执行`this.updateRoute`,
+``` js
+updateRoute (route: Route) {
+  const prev = this.current
+  this.current = route
+  this.cb && this.cb(route)
+  this.router.afterHooks.forEach(hook => {
+    hook && hook(route, prev)
+  })
+}
+```
+更新 this.current ，如果在index.js 中定义了afterHooks全局钩子函数，则在这里执行。
+回到匿名函数，接着执行真正的`onComplete`，这个`onComplete`对应`tansitionTo`执行时传入的函数，`index.js`中的`setupHashListener`，在最开始讲入口的时候提到过，在`history/hash.js`
+``` js
+setupListeners () {
+  const router = this.router
+  // scrollBehavior 当切换新路由时， 调整页面是否滚动到顶部，或者保持原先的滚动位置，
+  // 这个功能只会在支持 history.pushState 的浏览器中使用 supportsPushState;
+  const expectScroll = router.options.scrollBehavior
+  const supportsScroll = supportsPushState && expectScroll
+
+  if (supportsScroll) {
+    // 支持 scroll 滚动行为
+    // 利用 pageXOffset ， pageYOffset 记录当前页面的滚动位置。
+    setupScroll()
+  }
+
+  window.addEventListener(supportsPushState ? 'popstate' : 'hashchange', () => {
+    const current = this.current
+    if (!ensureSlash()) {
+      // 如果不是 #/ 开头的 hash 模式，
+      // 则直接返回
+      return
+    }
+    this.transitionTo(getHash(), route => {
+      // 路由守卫 触发完成后的回调
+      // 同时异步路由组件已经解析完成。
+      if (supportsScroll) {
+        handleScroll(this.router, route, current, true)
+      }
+      // 支持 pushState in  window.history;
+      // 不支持的情况下，使用 window.location.replace 替换路由中的hash值。
+      if (!supportsPushState) {
+        replaceHash(route.fullPath)
+      }
+    })
+  })
+}
+```
+如果支持`supportsScroll`记录页面滚动的位置`pageXOffset`和`pageYOffset`,保存在全局的positionStore对象里面,转到`util/scroll.js`，定义了`setupScroll`
+``` js
+export function setupScroll () {
+  // Fix for #1585 for Firefox
+  /* replaceState（） 三个参数。
+   *   状态对象， 状态对象 state 是一个JavaScript 对象，在 popstate事件被触发时，可以通过 state 拿到
+   *   标题：     目前没忽略，document.title = xxx 代替
+   *    URL:      定义了新的 url,浏览器并不会检查的url对应的 xxx.html 是否存在，
+   **/
+  window.history.replaceState({ key: getStateKey() }, '')
+  // 监听 popstate 事件变化，
+  window.addEventListener('popstate', e => {
+    saveScrollPosition()
+    if (e.state && e.state.key) {
+      // 更新 key 值。
+      setStateKey(e.state.key)
+    }
+  })
+}
+```
+里面的`savedPosition`保存页面的位置，放在positionStore 对象里面，key值就取`util/push-state.js`中设置key的方法，通`history.replaceState`方法，存放在状态对象state中，然后在监听`popstate`事件被触发后，获取之前在页面中保存的e.state.key，
+``` js
+// use User Timing api (if present) for more accurate key precision
+// https://w3c.github.io/user-timing/
+// 利用window.performance 更准确的测量 应用的性能
+// 这里利用performance 获取 时间戳，设置key 值。
+const Time = inBrowser && window.performance && window.performance.now
+  ? window.performance
+  : Date
+function genKey (): string {
+  return Time.now().toFixed(3)
+}
+```
+通过获取当前时间戳，设置对应key值，记录即将离开的页面的滚动位置。接着就是恢复页面的滚动位置。
+通过监听`popstate`或者`hashchange`事件回调上，设置页面跳转的监听事件，如果监听到页面跳转，在事件回调里面再次执行`transitionTo`函数，完成路由信息更新以及一系列的钩子函数执行，在匿名回调函数里面可以看到
+``` js
+handleScroll(this.router, route, current, true);
+```
+就是恢复页面滚动位置的操作。
 
 
 

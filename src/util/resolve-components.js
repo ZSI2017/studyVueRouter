@@ -85,7 +85,7 @@ export function flatMapComponents (
   }))
 }
 
-// 使其扁平化
+// 使其扁平化,二维数组，转化为一维数组。
 export function flatten (arr: Array<any>): Array<any> {
   return Array.prototype.concat.apply([], arr)
 }
