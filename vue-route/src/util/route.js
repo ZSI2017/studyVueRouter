@@ -18,7 +18,6 @@ export function createRoute (
   redirectedFrom?: ?Location,
   router?: VueRouter
 ): Route {
-  console.log('dddd')
   const stringifyQuery = router && router.options.stringifyQuery
 
   let query: any = location.query || {}

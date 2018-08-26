@@ -69,6 +69,9 @@ export class History {
    */
   transitionTo (location: RawLocation, onComplete?: Function, onAbort?: Function) {
     const route = this.router.match(location, this.current) // 返回 经过 Object.freeze 不可修改的 Route 对象
+    console.log('location ', location)
+    console.log('this.current: ', this.current)
+    console.log('route' , route)
     this.confirmTransition(route, () => {
       // 路由改变，触发
       this.updateRoute(route)

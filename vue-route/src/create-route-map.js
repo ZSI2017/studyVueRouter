@@ -26,7 +26,11 @@ export function createRouteMap (
   routes.forEach(route => {
     addRouteRecord(pathList, pathMap, nameMap, route)
   })
+  console.log("pathList: " , pathList)
 
+  console.log("pathMap: " , pathMap)
+
+  console.log("nameMap: " , nameMap)
   // ensure wildcard routes are always at the end
   // 保证 通配符 '*' path 总是出现在 pathList 最末尾。
   for (let i = 0, l = pathList.length; i < l; i++) {
