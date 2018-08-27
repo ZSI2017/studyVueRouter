@@ -23,6 +23,10 @@
 
    - ### [路由导航完成Complete](./docs/route-guard-complete.md)
 
+   - ### [route-view](./docs/route-view.md)
+
+   - ### [route-link](./docs/route-link.md)
+
 
 todo:
 

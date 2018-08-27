@@ -157,7 +157,9 @@ function extractUpdateHooks (updated: Array<RouteRecord>): Array<?Function> {
 每个即将进入的组件内部，用户自定义的路由钩子。
 
 - 解析异步的路由组件
-转到 `util/resolve-components.js`文件，`resolveAsyncComponents`函数返回一个匿名函数，传入参数也是`to`，`from`，`next`，也使用了`flatMapComponents`，遍历matched 数组中每个Route对象上的组件中的key值，在匿名函数内部，flatMapComponents函数中，遍历matched，对数组中每个RouteRecord，遍历里面的components数组，对每个组件执行匿名函数，解析异步组件，定义了`resolve`和`reject`成功或失败的回调，被包裹在`once`中，`once`函数返回一个闭包，保证函数只能被执行一次。
+转到 `util/resolve-components.js`文件，`resolveAsyncComponents`函数返回一个匿名函数，传入参数也是`to`，`from`，`next`，也使用了`flatMapComponents`，遍历matched 数组中每个Route对象上的组件中的key值，在匿名函数内部，flatMapComponents函数中，遍历matched，对数组中每个RouteRecord，遍历里面的components数组，对每个组件执行匿名函数，匿名函数最外层进行异步组件的判断`  if (typeof def === 'function' && def.cid === undefined) `, 在vue中，每个实例的构造函数，包括Vue，都有一个唯一的cid,但是Vue注册的异步组件是一个工厂函数，不是对象，无法继承，也没有cid。
+
+解析异步组件，定义了`resolve`和`reject`成功或失败的回调，被包裹在`once`中，`once`函数返回一个闭包，保证函数只能被执行一次，这里也沿用了vue中异步组件的加载逻辑
 
 在try..catch 中执行 解析异步组件，在`resolve`里面，通过`match.components[key] = resolvedDef`,拿到导出的异步组件，
 ``` js
