@@ -12,6 +12,7 @@
  * @param  {[type]} options [description]
  * @return {[type]}         [description]
  */
+import './style.css';
 
 function init(options) {}
 

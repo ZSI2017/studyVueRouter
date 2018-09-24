@@ -15,43 +15,12 @@
     <input type="button" name="" value="route go" id=btn-go>
 
     <div id="app"></div>
-
-  <script type="text/javascript" src="./src/util/pathToRegex.js"></script>
-  <script type="text/javascript" src="./src/app-simple.js"></script>
-  <script type="text/javascript" src="./src/utils.js"></script>
   <script>
   // 2. Define route components
   const Home = { template: '<div>home</div>' }
   const Foo = { template: '<div>foo</div>' }
   const Bar = { template: '<div>bar</div>' }
   const baba = { template: '<div>baba</div>' }
-
-  var routes = [
-    { path: '/', component: Home }, // all paths are defined without the hash.
-    { path: '/foo/:id', component: Foo },
-    { path: '/bar',
-      component: Bar,
-      children: [
-        {
-          path: '/baba',
-          component: baba
-        }
-      ] }
-  ]
-
-  var handle = minRoute({
-    id: 'app',
-    routes:routes
-  })
-
-  handle.beforeEach(function(route){
-    console.log('into',route)
-  })
-
-  document.querySelector('#btn-go').addEventListener('click', function() {
-    handle.push({path: '/bar',params:{id:9999}});
-  })
-
   </script>
   </body>
 </html>

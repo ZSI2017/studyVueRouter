@@ -1,11 +1,11 @@
-function supportPushState() {
+export function supportPushState() {
   return window.history && 'pushState' in window.history
 }
 
 /**
  * 多维数组，转化为一维数组
  */
-function flatten(queue) {
+ export function flatten(queue) {
   var flatMap = [],
       j = 0,
       flatFn = function(queue) {
@@ -27,7 +27,7 @@ function flatten(queue) {
  * 获取hash 值
  * @return {[type]} [description]
  */
-function getHash() {
+export function getHash() {
   var href = window.location.href,
       pos = href.indexOf('#');
 
@@ -43,7 +43,7 @@ function getHash() {
  * @param  {[type]} path [description]
  * @return {[type]}      [description]
  */
-function getUrl(path) {
+export function getUrl(path) {
   var href = window.location.href,
       hash = href.indexOf('#'),
       url;

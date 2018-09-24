@@ -1,6 +1,11 @@
 /*    内部接口    */
 
+import pathToRegexp from 'path-to-regexp';
+import {supportPushState, flatten,getHash,getUrl  } from './util/utils'
+
 window.minRoute = init;
+
+export  const minRoute = init;
 
 function init(options) {
     var render = document.querySelector('#'+options.id),
@@ -25,7 +30,6 @@ function init(options) {
     transitionTo(getHash())
   }
 
-
   window.addEventListener(supportPushState ? 'popstate' : 'hashchange', function(e) {
       transitionTo(getHash());
   })
@@ -41,10 +45,8 @@ function init(options) {
    * 利用regex 匹配path,并获取到path上的params
    * @return {[type]} [description]
    */
-
   function transitionTo(location, onAbort, onComplete) {
     var route = match(location),
-
         queue = flatten(queueInit),
         len = queue.length,
         iterator = function(fn) {
@@ -61,7 +63,7 @@ function init(options) {
 
     for(var i = 0; i <= len; i++) {
       if (i == len) {
-        onComplete && onComplete();
+        onComplete && onComplete(route);
         current = route;
 
         return;
@@ -79,12 +81,10 @@ function match(rawLocation) {
   var location = normalizeLocation(rawLocation);
 
   return createRoute(location, null);
-
 }
 
 function normalizeLocation(raw) {
   var location = typeof raw === 'string' ? {path: raw} : raw,
-      currentHash = raw,
       hash = location.path,       // 当前页面中的hash值，
       pathMap = resolvePath();    // path映射
 
@@ -92,10 +92,11 @@ function normalizeLocation(raw) {
     if (pathMap.hasOwnProperty(path)) {
       var record = pathMap[path],
           m = hash.match(record.regex);
+
       if (m) {
         for (var i = 1, len = m.length; i < len; i++) {
 
-          var key = record.regex.keys[i-1]
+          var key = record.regex.keys[i-1];
 
           if(key) {
             if(!location.params) {
@@ -144,17 +145,6 @@ function createRoute(location, record) {
     }
 
     return pathMap;
-  }
-
-  function getHash() {
-    var href = window.location.href,
-        pos = href.indexOf('#');
-
-    if (pos == -1) {
-      return ''
-    }
-
-    return decodeURI(href.slice(pos+1));
   }
 
   /**
@@ -211,22 +201,8 @@ function createRoute(location, record) {
     transitionTo(location, null, function() {
       window.history.pushState(null,null,getUrl(location.path))
     })
-
   }
 
-  function  getUrl(path) {
-    var href = window.location.href,
-        hash = href.indexOf('#'),
-        url;
-
-    if (hash > -1) {
-      url = href.slice(0, hash)
-    } else {
-      url = href;
-    }
-
-    return url + "#" + path;
-  }
   /**
    * 路由后退
    * @return {[type]} [description]
