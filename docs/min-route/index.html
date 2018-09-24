@@ -6,10 +6,12 @@
     <title>min-route</title>
   </head>
   <body>
-
-    <a href="#/foo/123">foo test</a>
-    <a href="#/bar">bar test</a>
-
+    <h1>hash model</h1>
+  <ul>
+    <li><a href="#/">/</a></li>
+    <li><a href="#/foo">/foo</a></li>
+    <li><a href="#/bar">/bar</a></li>
+  </ul>
     <input type="button" name="" value="route go" id=btn-go>
 
     <div id="app"></div>
@@ -22,11 +24,19 @@
   const Home = { template: '<div>home</div>' }
   const Foo = { template: '<div>foo</div>' }
   const Bar = { template: '<div>bar</div>' }
+  const baba = { template: '<div>baba</div>' }
 
   var routes = [
     { path: '/', component: Home }, // all paths are defined without the hash.
     { path: '/foo/:id', component: Foo },
-    { path: '/bar', component: Bar }
+    { path: '/bar',
+      component: Bar,
+      children: [
+        {
+          path: '/baba',
+          component: baba
+        }
+      ] }
   ]
 
   var handle = minRoute({
@@ -39,7 +49,7 @@
   })
 
   document.querySelector('#btn-go').addEventListener('click', function() {
-    handle.back();
+    handle.push({path: '/bar',params:{id:9999}});
   })
 
   </script>
