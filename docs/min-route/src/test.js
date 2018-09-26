@@ -1,6 +1,6 @@
 
 import  { minRoute} from './app-simple';
- console.log("ddssasdfas")
+ console.log(process.env.NODE_ENV)
 var routes = [
   { path: '/', component: Home }, // all paths are defined without the hash.
   { path: '/foo/:id', component: Foo },
